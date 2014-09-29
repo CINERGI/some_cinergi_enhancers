@@ -15,13 +15,13 @@ def check_link(url):
         try:
             urlopen(url, timeout=12)
         except HTTPError as e:
-            return "{}: {}, {}".format(url, e.reason, e.code)
+            return "{}, {}".format(e.reason, e.code)
         except URLError as e:
-            return "{}: {}".format(url, e.reason)
+            return "{}".format(e.reason)
         except SocketError:
-            return "{}: Socket Error".format(url)
+            return "Socket Error"
         except ValueError:
-            return "{}: Value Error".format(url)
+            return "Value Error"
     else:
         return "No link"
     return "working"
