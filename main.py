@@ -3,7 +3,8 @@ __author__ = 'Raquel'
 
 from urllib.request import urlopen
 from urllib.parse import urljoin
-from time import time, strftime, localtime
+from datetime import datetime
+from time import clock
 import re
 from bs4 import BeautifulSoup
 from check_link import check_link
@@ -19,12 +20,18 @@ ONLY_ACRONYM = 'Only acronym in title'
 LOWERCASE = 'Title is lowercase'
 NO_BD = 'No Brief Description'
 NO_ABS = 'No Abstract'
+NO_SOURCE = 'Abstract missing source'
 
-# Resources that get a pass
-# passResources = ['USGS Global Data Explorer]
+# Resources that get a pass because for having Brief Desc == Abstract or having no source for their abstract
+# because the platforms they are hosted on often lack descriptions
+passResources = ['USGS Global Data Explorer', 'SAP-DCC Web Feature Service', 'SESAR Platform Type',
+                 'SESAR Physiographic Feature', 'SESAR Collection Method', 'Open Topography find lidar data',
+                 'Open Geospatial Consortium (OGC) Feature Web Service', 'USAP-DCC Web Feature Service',
+                 'NOAA Index of Snow/Ice related datasets', 'NASA Reverb/ECHO', 'MediaBank',
+                 'LSDI']
 
 # Orgs whose Brief Descriptions and Abstracts are often the same because of general lack of detail
-nondescriptOrgs = ['Rolling Deck to Repository (R2R)', 'Marine Metadata Initiative']
+nondescriptOrgs = ['Rolling Deck to Repository (R2R)', 'Marine Metadata Initative']
 
 # Url for making queries to hydro10
 base_url = 'http://hydro10.sdsc.edu/'
@@ -50,20 +57,22 @@ class Resource:
     communities = []
     org = ""
     parentResource = ""
+    gets_pass = False
 
-    def gets_pass(self):
+    def set_pass(self):
+        if self.title in passResources:
+            self.gets_pass = True
         if self.org in nondescriptOrgs:
-            return True
+            self.gets_pass = True
         if self.parentResource == 'MMI Ontology Registry and Repository (ORR)':
-            return True
-
+            self.gets_pass = True
 
 soup = BeautifulSoup(urlopen(start_url).read())
 current_page = soup.find('div', {'class': 'pagination'}).find('li', {'class': 'active'})
 page_num = current_page.find('a').text
 
 resources = []
-start_time = time()
+start_time = clock()
 print("Analyzing catalog...")
 while current_page.find_next('li') is not None:
     # Get the table
@@ -78,7 +87,7 @@ while current_page.find_next('li') is not None:
     # Each row in the table is a resource
     for a_resource in table_rows:
         temp_issues = []
-        title = a_resource.find('td', {'class': 'resTitle'}).find('div').text
+        title = a_resource.find('td', {'class': 'resTitle'}).find('div').text.strip()
         res = Resource(title)
         if all(c.isupper() for c in title):
             title_prob = TitleProb(ONLY_ACRONYM)
@@ -106,15 +115,28 @@ while current_page.find_next('li') is not None:
         res.abstract = find_abstract(details_page)
         res.org = find_org(details_page)
         res.parentResource = find_parent(details_page)
+        # Set if resource gets a pass or not
+        res.set_pass()
+        # Check if resource has a Brief Description
         if res.briefDesc is "":
             desc_prob = SuckyDesc(NO_BD)
             temp_issues.append(desc_prob)
+        # Check if abstract is sufficient
         if len(re.findall('\w+', res.abstract)) < 2:
             desc_prob = SuckyDesc(NO_ABS)
             temp_issues.append(desc_prob)
-        if are_same(res.briefDesc, res.abstract) and not res.gets_pass():
-            desc_prob = SuckyDesc(BD_ABSTRACT_SAME)
-            temp_issues.append(desc_prob)
+            # Check if brief desc. and abstract are the same
+        if are_same(res.briefDesc, res.abstract):
+            if not res.gets_pass:
+                desc_prob = SuckyDesc(BD_ABSTRACT_SAME)
+                temp_issues.append(desc_prob)
+        else:
+            # Check if abstract has source (only if abstract and Brief Desc are not the same)
+            # This b/c if Brief Desc == Abstract often they will have been written by CINERGI
+            # and thus not have an external source
+            if re.search('\(Source: (.*)\)', res.abstract) is None:
+                desc_prob = SuckyDesc(NO_SOURCE)
+                temp_issues.append(desc_prob)
         res.issue_space = temp_issues
         if len(res.issue_space) > 0:
             res.has_issues = True
@@ -126,7 +148,7 @@ while current_page.find_next('li') is not None:
     current_page = soup.find('div', {'class': 'pagination'}).find('li', {'class': 'active'})
     page_num = current_page.find('a').text
 
-end_time = time() - start_time
+end_time = clock() - start_time
 print('Process took {}'.format(end_time))
 
 # List of resources with discernible issues
@@ -154,7 +176,7 @@ for r in resources_with_issues:
 issue_res_counter = 0
 issue_counter = 0
 print('Creating output...')
-time_created = strftime('%b %d %Y_%I.%m %p', localtime())
+time_created = datetime.now().strftime('%b %d %Y_%I.%m %p')
 f = open('Output/HLI Issues_{}.txt.'.format(time_created), 'w+')
 for res in resources_with_issues:
     resource = resources_with_issues.pop(0)
