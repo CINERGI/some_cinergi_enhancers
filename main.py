@@ -7,8 +7,8 @@ from time import time, strftime, localtime
 import re
 from bs4 import BeautifulSoup
 from check_link import check_link
-from para_differ import find_abstract, find_brief_desc, are_same
-from org_finder import find_org
+from find_details import find_abstract, find_brief_desc, find_org, find_parent
+from field_checks import are_same, tagged
 from issues import BadUrl, TitleProb, SuckyDesc
 
 
@@ -20,10 +20,18 @@ LOWERCASE = 'Title is lowercase'
 NO_BD = 'No Brief Description'
 NO_ABS = 'No Abstract'
 
+# Resources that get a pass
+# passResources = ['USGS Global Data Explorer]
+
 # Orgs whose Brief Descriptions and Abstracts are often the same because of general lack of detail
-nondescriptOrgs = ['Rolling Deck to Repository', 'Marine Metadata Initiative']
+nondescriptOrgs = ['Rolling Deck to Repository (R2R)', 'Marine Metadata Initiative']
+
+# Url for making queries to hydro10
 base_url = 'http://hydro10.sdsc.edu/'
+
+# Resource catalog page to start analysis from
 start_url = 'http://hydro10.sdsc.edu/HLIResources/Resources'
+
 
 class Resource:
     def __init__(self, res_title):
@@ -41,10 +49,13 @@ class Resource:
     domains = []
     communities = []
     org = ""
+    parentResource = ""
 
-
-def tagged(res_title):
-    return re.search('\((DUPLICATE( [0-9])?|DEPRECATED|BROKEN LINK|LOW REL)\)', res_title)
+    def gets_pass(self):
+        if self.org in nondescriptOrgs:
+            return True
+        if self.parentResource == 'MMI Ontology Registry and Repository (ORR)':
+            return True
 
 
 soup = BeautifulSoup(urlopen(start_url).read())
@@ -87,7 +98,6 @@ while current_page.find_next('li') is not None:
         else:
             url_prob = BadUrl(NO_LINK)
             temp_issues.append(url_prob)
-
         details = a_resource.find('td', {'class': 'resActions'}).find('div').find('a')
         link_to_details = details['href']
         full_details = urljoin(base_url, link_to_details)
@@ -95,16 +105,16 @@ while current_page.find_next('li') is not None:
         res.briefDesc = find_brief_desc(details_page)
         res.abstract = find_abstract(details_page)
         res.org = find_org(details_page)
+        res.parentResource = find_parent(details_page)
         if res.briefDesc is "":
             desc_prob = SuckyDesc(NO_BD)
             temp_issues.append(desc_prob)
         if len(re.findall('\w+', res.abstract)) < 2:
             desc_prob = SuckyDesc(NO_ABS)
             temp_issues.append(desc_prob)
-        if are_same(res.briefDesc, res.abstract):
-            if res.org not in nondescriptOrgs and res.title != res.briefDesc:
-                desc_prob = SuckyDesc(BD_ABSTRACT_SAME)
-                temp_issues.append(desc_prob)
+        if are_same(res.briefDesc, res.abstract) and not res.gets_pass():
+            desc_prob = SuckyDesc(BD_ABSTRACT_SAME)
+            temp_issues.append(desc_prob)
         res.issue_space = temp_issues
         if len(res.issue_space) > 0:
             res.has_issues = True
@@ -144,7 +154,7 @@ for r in resources_with_issues:
 issue_res_counter = 0
 issue_counter = 0
 print('Creating output...')
-time_created = strftime('%b %d %Y %I:%m %p', localtime())
+time_created = strftime('%b %d %Y_%I.%m %p', localtime())
 f = open('Output/HLI Issues_{}.txt.'.format(time_created), 'w+')
 for res in resources_with_issues:
     resource = resources_with_issues.pop(0)

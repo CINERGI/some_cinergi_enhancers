@@ -12,5 +12,9 @@ def find_abstract(details_page):
     return details_page.find('th', text='Abstract Or Purpose').find_next('td').text
 
 
-def are_same(bd, abstract):
-    return bd == abstract
+def find_org(details_page):
+    return details_page.find('th', text='Organization').find_next('td').text
+
+
+def find_parent(details_page):
+    return details_page.find('th', text='ParentResource').find_next('td').text
