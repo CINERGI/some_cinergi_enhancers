@@ -9,7 +9,7 @@ import re
 from bs4 import BeautifulSoup
 from check_link import check_link
 from find_details import find_abstract, find_brief_desc, find_org, find_parent
-from field_checks import are_same, tagged
+from field_checks import are_same, tag_in_title
 from issues import BadUrl, TitleProb, SuckyDesc
 
 # TODO: Check for duplicate links
@@ -25,12 +25,15 @@ NO_SOURCE = 'Abstract missing source'
 
 # Resources that get a pass because for having Brief Desc == Abstract or having no source for their abstract
 # because the platforms they are hosted on often lack descriptions
-passResources = ['USGS Global Data Explorer', 'SAP-DCC Web Feature Service', 'SESAR Platform Type',
-                 'SESAR Physiographic Feature', 'SESAR Collection Method', 'Open Topography find lidar data',
+passResources = ['USGS Global Data Explorer', 'SAP-DCC Web Feature Service', 'Open Topography find lidar data',
                  'Open Geospatial Consortium (OGC) Feature Web Service', 'USAP-DCC Web Feature Service',
                  'NOAA Index of Snow/Ice related datasets', 'NASA Reverb/ECHO', 'MediaBank',
                  'LSDI' 'Key to TDWG Standards Status and Categories', 'IOOS Controlled Vocabularies Documentation',
-                 'MMI Ontology Registry and Repository (ORR)', 'THREDDS', 'LSDI']
+                 'MMI Ontology Registry and Repository (ORR)', 'THREDDS', 'LSDI', 'SESAR Collection Method',
+                 'SESAR Country List', 'SESAR Material', 'SESAR Metadata Fields', 'SESAR Mineral Classification',
+                 'SESAR Navigation Type', 'SESAR Physiographic Feature', 'SESAR Platform Type',
+                 'SESAR Rock Classification', 'SESAR Sample Type (Object)', 'SESAR vocabularies',
+                 'SESAR web services API documentation', 'SESAR web services schema']
 
 # Orgs whose Brief Descriptions and Abstracts are often the same because of general lack of detail
 nondescriptOrgs = ['Rolling Deck to Repository (R2R)', 'Marine Metadata Initative']
@@ -157,8 +160,11 @@ print('Process took {}'.format(end_time))
 # List of resources with discernible issues
 resources_with_issues = []
 
+issue_counter = 0
 for resource in resources:
-    if resource.has_issues and tagged(resource.title) is None:
+    if resource.has_issues and tag_in_title(resource.title) is None:
+        for i in resource.issue_space:
+            issue_counter += 1
         resources_with_issues.append(resource)
 
 # Shuffle resources with issues so ones with highest severity are first
@@ -176,21 +182,19 @@ for r in resources_with_issues:
         temp = resources_with_issues.pop(resources_with_issues.index(r))
         resources_with_issues.insert(0, temp)
 
-issue_res_counter = 0
-issue_counter = 0
 print('Creating output...')
 time_created = datetime.now().strftime('%b %d %Y_%I.%m %p')
 f = open('Output/HLI Issues_{}.txt.'.format(time_created), 'w+')
+f.write('{} total Resources with Issues'.format(len(resources_with_issues)))
+f.write('{} total issues'.format(issue_counter))
 for res in resources_with_issues:
     resource = resources_with_issues.pop(0)
-    issue_res_counter += 1
     f.write('{}\n pg. {}\n{}\n'.format(resource.title, resource.pg_num, resource.url))
     for each in resource.issue_space:
-        issue_counter += 1
         f.write("   * {}\n".format(each.issue))
     f.write('\n')
 
 f.close()
 print('Done.')
-print('{} total Resources with Issues'.format(issue_res_counter))
+print('{} total Resources with Issues'.format(len(resources_with_issues)))
 print('{} total issues'.format(issue_counter))
