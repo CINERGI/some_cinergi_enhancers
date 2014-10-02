@@ -12,6 +12,7 @@ from find_details import find_abstract, find_brief_desc, find_org, find_parent
 from field_checks import are_same, tagged
 from issues import BadUrl, TitleProb, SuckyDesc
 
+# TODO: Check for duplicate links
 
 NO_LINK = 'No link'
 BROKEN_LINK = 'BROKEN LINK'
@@ -28,7 +29,8 @@ passResources = ['USGS Global Data Explorer', 'SAP-DCC Web Feature Service', 'SE
                  'SESAR Physiographic Feature', 'SESAR Collection Method', 'Open Topography find lidar data',
                  'Open Geospatial Consortium (OGC) Feature Web Service', 'USAP-DCC Web Feature Service',
                  'NOAA Index of Snow/Ice related datasets', 'NASA Reverb/ECHO', 'MediaBank',
-                 'LSDI']
+                 'LSDI' 'Key to TDWG Standards Status and Categories', 'IOOS Controlled Vocabularies Documentation',
+                 'MMI Ontology Registry and Repository (ORR)', 'THREDDS', 'LSDI']
 
 # Orgs whose Brief Descriptions and Abstracts are often the same because of general lack of detail
 nondescriptOrgs = ['Rolling Deck to Repository (R2R)', 'Marine Metadata Initative']
@@ -41,12 +43,20 @@ start_url = 'http://hydro10.sdsc.edu/HLIResources/Resources'
 
 
 class Resource:
-    def __init__(self, res_title):
-        self.title = res_title
+    def __init__(self, title, pg_num, url, org, parent_resource):
+        self.title = title
+        self.pg_num = pg_num
+        self.url = url
+        self.org = org
+        self.parentResource = parent_resource
+        if self.title in passResources:
+            self.gets_pass = True
+        if self.org in nondescriptOrgs:
+            self.gets_pass = True
+        if self.parentResource in passResources:
+            self.gets_pass = True
 
-    url = None
     severity = 0
-    pg_num = 0
     has_issues = False
     issue_space = []
     briefDesc = ""
@@ -55,17 +65,7 @@ class Resource:
     primaryDomain = ""
     domains = []
     communities = []
-    org = ""
-    parentResource = ""
     gets_pass = False
-
-    def set_pass(self):
-        if self.title in passResources:
-            self.gets_pass = True
-        if self.org in nondescriptOrgs:
-            self.gets_pass = True
-        if self.parentResource == 'MMI Ontology Registry and Repository (ORR)':
-            self.gets_pass = True
 
 soup = BeautifulSoup(urlopen(start_url).read())
 current_page = soup.find('div', {'class': 'pagination'}).find('li', {'class': 'active'})
@@ -86,57 +86,60 @@ while current_page.find_next('li') is not None:
 
     # Each row in the table is a resource
     for a_resource in table_rows:
+        # First gather data to create resource
         temp_issues = []
-        title = a_resource.find('td', {'class': 'resTitle'}).find('div').text.strip()
-        res = Resource(title)
-        if all(c.isupper() for c in title):
-            title_prob = TitleProb(ONLY_ACRONYM)
-            temp_issues.append(title_prob)
-        first_letter = title[0]
-        if first_letter.islower():
-            title_prob = TitleProb(LOWERCASE)
-            temp_issues.append(TitleProb(LOWERCASE))
-        res.pg_num = page_num
+        # Get title
+        res_title = a_resource.find('td', {'class': 'resTitle'}).find('div').text.strip()
+        # Get link
         link_tag = a_resource.find('a', text='Link')
         if link_tag.has_attr('href'):
-            res.url = link_tag['href']
-            status = check_link(res.url)
-            if status is not "working" and BROKEN_LINK not in res.title:
+            res_url = link_tag['href']
+            status = check_link(res_url)
+            if status is not "working" and BROKEN_LINK not in res_title:
                 url_prob = BadUrl(status)
                 temp_issues.append(url_prob)
         else:
+            res_url = 'None'
             url_prob = BadUrl(NO_LINK)
             temp_issues.append(url_prob)
+        # Access detail page to get brief description, abstract, org and parent resource
         details = a_resource.find('td', {'class': 'resActions'}).find('div').find('a')
         link_to_details = details['href']
         full_details = urljoin(base_url, link_to_details)
         details_page = BeautifulSoup(urlopen(full_details).read())
-        res.briefDesc = find_brief_desc(details_page)
-        res.abstract = find_abstract(details_page)
-        res.org = find_org(details_page)
-        res.parentResource = find_parent(details_page)
-        # Set if resource gets a pass or not
-        res.set_pass()
-        # Check if resource has a Brief Description
+        res_briefDesc = find_brief_desc(details_page)
+        res_abstract = find_abstract(details_page)
+        res_org = find_org(details_page)
+        res_parentResource = find_parent(details_page)
+        res = Resource(res_title, page_num, res_url, res_org, res_parentResource)
+        if all(c.isupper() for c in res_title) and not res.gets_pass:
+            title_prob = TitleProb(ONLY_ACRONYM)
+            temp_issues.append(title_prob)
+        first_letter = res_title[0]
+        if first_letter.islower():
+            title_prob = TitleProb(LOWERCASE)
+            temp_issues.append(TitleProb(LOWERCASE))
+        # Check if resource is missing Brief Description
         if res.briefDesc is "":
             desc_prob = SuckyDesc(NO_BD)
             temp_issues.append(desc_prob)
-        # Check if abstract is sufficient
-        if len(re.findall('\w+', res.abstract)) < 2:
-            desc_prob = SuckyDesc(NO_ABS)
-            temp_issues.append(desc_prob)
-            # Check if brief desc. and abstract are the same
+        # Check if brief desc. and abstract are the same
         if are_same(res.briefDesc, res.abstract):
             if not res.gets_pass:
                 desc_prob = SuckyDesc(BD_ABSTRACT_SAME)
                 temp_issues.append(desc_prob)
         else:
-            # Check if abstract has source (only if abstract and Brief Desc are not the same)
+            # Check if abstract is insufficient (only if abstract and Brief Desc are not the same)
             # This b/c if Brief Desc == Abstract often they will have been written by CINERGI
             # and thus not have an external source
-            if re.search('\(Source: (.*)\)', res.abstract) is None:
-                desc_prob = SuckyDesc(NO_SOURCE)
+            if len(re.findall('\w+', res.abstract)) < 2:
+                desc_prob = SuckyDesc(NO_ABS)
                 temp_issues.append(desc_prob)
+            else:
+                # If abstract is sufficient, check if abstract is missing source
+                if re.search('\(Source: (.*)\)', res.abstract) is None:
+                    desc_prob = SuckyDesc(NO_SOURCE)
+                    temp_issues.append(desc_prob)
         res.issue_space = temp_issues
         if len(res.issue_space) > 0:
             res.has_issues = True
