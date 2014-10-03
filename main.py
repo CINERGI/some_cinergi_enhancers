@@ -22,6 +22,7 @@ LOWERCASE = 'Title is lowercase'
 NO_BD = 'No Brief Description'
 NO_ABS = 'No Abstract'
 NO_SOURCE = 'Abstract missing source'
+DUPLICATE_LINK = 'Duplicate link'
 
 # Resources that get a pass because for having Brief Desc == Abstract or having no source for their abstract
 # because the platforms they are hosted on often lack descriptions
@@ -33,7 +34,10 @@ passResources = ['USGS Global Data Explorer', 'SAP-DCC Web Feature Service', 'Op
                  'SESAR Country List', 'SESAR Material', 'SESAR Metadata Fields', 'SESAR Mineral Classification',
                  'SESAR Navigation Type', 'SESAR Physiographic Feature', 'SESAR Platform Type',
                  'SESAR Rock Classification', 'SESAR Sample Type (Object)', 'SESAR vocabularies',
-                 'SESAR web services API documentation', 'SESAR web services schema']
+                 'SESAR web services API documentation', 'SESAR web services schema', 'CIAD OV Services',
+                 'Emergency Data Exchange Language (EDXL)', 'CHRONOS', 'ANTARES', 'AGROVOC'
+                 'NOAA National Oceanographic Data Center (NODC) Granule-level Geoportal Server',
+                 'NOAA National Oceanographic Data Center (NODC) Granule-level Geoportal Server']
 
 # Orgs whose Brief Descriptions and Abstracts are often the same because of general lack of detail
 nondescriptOrgs = ['Rolling Deck to Repository (R2R)', 'Marine Metadata Initative']
@@ -59,7 +63,6 @@ class Resource:
         if self.parentResource in passResources:
             self.gets_pass = True
 
-    severity = 0
     has_issues = False
     issue_space = []
     briefDesc = ""
@@ -115,10 +118,13 @@ while current_page.find_next('li') is not None:
         res_org = find_org(details_page)
         res_parentResource = find_parent(details_page)
         res = Resource(res_title, page_num, res_url, res_org, res_parentResource)
-        if all(c.isupper() for c in res_title) and not res.gets_pass:
-            title_prob = TitleProb(ONLY_ACRONYM)
-            temp_issues.append(title_prob)
-        first_letter = res_title[0]
+        res.briefDesc = res_briefDesc
+        res.abstract = res_abstract
+        if all(c.isupper() for c in res.title):
+            if not res.gets_pass:
+                title_prob = TitleProb(ONLY_ACRONYM)
+                temp_issues.append(title_prob)
+        first_letter = res.title[0]
         if first_letter.islower():
             title_prob = TitleProb(LOWERCASE)
             temp_issues.append(TitleProb(LOWERCASE))
@@ -126,22 +132,19 @@ while current_page.find_next('li') is not None:
         if res.briefDesc is "":
             desc_prob = SuckyDesc(NO_BD)
             temp_issues.append(desc_prob)
-        # Check if brief desc. and abstract are the same
-        if are_same(res.briefDesc, res.abstract):
-            if not res.gets_pass:
-                desc_prob = SuckyDesc(BD_ABSTRACT_SAME)
-                temp_issues.append(desc_prob)
+        # Check if abstract is insufficient
+        if len(re.findall('\w+', res.abstract)) < 2:
+            desc_prob = SuckyDesc(NO_ABS)
+            temp_issues.append(desc_prob)
         else:
-            # Check if abstract is insufficient (only if abstract and Brief Desc are not the same)
-            # This b/c if Brief Desc == Abstract often they will have been written by CINERGI
-            # and thus not have an external source
-            if len(re.findall('\w+', res.abstract)) < 2:
-                desc_prob = SuckyDesc(NO_ABS)
+            # If abstract is sufficient, check if abstract is missing source
+            if re.search('\(Source: (.*)\)', res.abstract) is None:
+                desc_prob = SuckyDesc(NO_SOURCE)
                 temp_issues.append(desc_prob)
-            else:
-                # If abstract is sufficient, check if abstract is missing source
-                if re.search('\(Source: (.*)\)', res.abstract) is None:
-                    desc_prob = SuckyDesc(NO_SOURCE)
+            # Check if brief desc. and abstract are the same
+            if are_same(res.briefDesc, res.abstract):
+                if not res.gets_pass:
+                    desc_prob = SuckyDesc(BD_ABSTRACT_SAME)
                     temp_issues.append(desc_prob)
         res.issue_space = temp_issues
         if len(res.issue_space) > 0:
@@ -185,8 +188,8 @@ for r in resources_with_issues:
 print('Creating output...')
 time_created = datetime.now().strftime('%b %d %Y_%I.%m %p')
 f = open('Output/HLI Issues_{}.txt.'.format(time_created), 'w+')
-f.write('{} total Resources with Issues'.format(len(resources_with_issues)))
-f.write('{} total issues'.format(issue_counter))
+f.write('{} total Resources with Issues\n'.format(len(resources_with_issues)))
+f.write('{} total issues\n'.format(issue_counter))
 for res in resources_with_issues:
     resource = resources_with_issues.pop(0)
     f.write('{}\n pg. {}\n{}\n'.format(resource.title, resource.pg_num, resource.url))

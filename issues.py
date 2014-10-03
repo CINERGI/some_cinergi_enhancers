@@ -16,6 +16,12 @@ class Issue(object):
     severity = 0
 
 
+class Duplicate(Issue):
+    def __init__(self, issue):
+        Issue.__init__(self, issue)
+    severity = 3
+
+
 class BadUrl(Issue):
     def __init__(self, url_error):
         Issue.__init__(self, url_error)
@@ -35,7 +41,7 @@ class TitleProb(Issue):
 class SuckyDesc(Issue):
     def __init__(self, desc_issue):
         Issue.__init__(self, desc_issue)
-        if desc_issue == NO_ABS or desc_issue == BD_ABSTRACT_SAME:
+        if desc_issue == NO_ABS:
             self.severity = 2
         else:
             self.severity = 1
