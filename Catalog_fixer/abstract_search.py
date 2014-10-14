@@ -1,11 +1,15 @@
 __author__ = 'Raquel'
 
 import re
-from issues import SuckyDesc
-from bs4 import BeautifulSoup
 from urllib.request import urlopen, urljoin
-from find_details import find_abstract, find_org, find_parent
 from datetime import datetime
+
+from bs4 import BeautifulSoup
+
+from Catalog_fixer.issues import SuckyDesc
+from Catalog_fixer.find_details import find_abstract, find_org, find_parent
+from Catalog_fixer.field_checks import tag_in_title
+
 
 NO_ABS = 'No Abstract'
 NO_SOURCE = 'Abstract missing source'
@@ -33,7 +37,8 @@ base_url = 'http://hydro10.sdsc.edu/'
 # Resource catalog page to start analysis from
 start_url = 'http://hydro10.sdsc.edu/HLIResources/Resources'
 
-class Resource_No_Source:
+
+class ResourceNoSource:
     def __init__(self, title, pg_num, url, org, parent_resource):
         self.title = title
         self.pg_num = pg_num
@@ -67,6 +72,7 @@ def build_title(url):
             return title.text
     return title
 
+
 resources = []
 while current_page.find_next('li') is not None:
     # Get the table
@@ -80,41 +86,43 @@ while current_page.find_next('li') is not None:
 
     # Each row in the table is a resource
     for a_resource in table_rows:
-        # First gather data to create resource
-        temp_issues = []
         # Get title
         res_title = a_resource.find('td', {'class': 'resTitle'}).find('div').text.strip()
-        # Get link
-        link_tag = a_resource.find('a', text='Link')
-        res_url = link_tag['href']
-        # Access detail page to get brief description, abstract, org and parent resource
-        details = a_resource.find('td', {'class': 'resActions'}).find('div').find('a', text='Details')
-        edit = a_resource.find('td', {'class': 'resActions'}).find('div').find('a', text='Edit')
-        link_to_edit = edit['href']
-        details_page = BeautifulSoup(urlopen(urljoin(base_url, details['href'])).read())
-        res_abstract = find_abstract(details_page)
-        res_org = find_org(details_page)
-        res_parentResource = find_parent(details_page)
-        res = Resource_No_Source(res_title, page_num, res_url, res_org, res_parentResource)
-        # Check if abstract is insufficient
-        if len(re.findall('\w+', res.abstract)) > 2:
-            # If abstract is sufficient, check if abstract is missing source
-            if re.search('\(Source: (.*)\)', res.abstract) is None:
-                resource_page = urlopen(res.url).read()
-                if re.search(res.abstract, resource_page) is not None:
-                    source_title = resource_page.find('title', text=True)
-                    if source_title is not None:
-                        res.recommended_source = source_title
+        if tag_in_title(res_title) is None:
+            # Temporary list for holding issues found
+            temp_issues = []
+            # Get link
+            link_tag = a_resource.find('a', text='Link')
+            res_url = link_tag['href']
+            # Access detail page to get brief description, abstract, org and parent resource
+            details = a_resource.find('td', {'class': 'resActions'}).find('div').find('a', text='Details')
+            edit = a_resource.find('td', {'class': 'resActions'}).find('div').find_next('a', text='Edit')
+            link_to_edit = edit['href']
+            details_page = BeautifulSoup(urlopen(urljoin(base_url, details['href'])).read())
+            res_abstract = find_abstract(details_page)
+            res_org = find_org(details_page)
+            res_parentResource = find_parent(details_page)
+            res = ResourceNoSource(res_title, page_num, res_url, res_org, res_parentResource)
+            # Check if abstract is insufficient
+            if len(re.findall('\w+', res.abstract)) > 2:
+                # If abstract is sufficient, check if abstract is missing source
+                if re.search('\(Source: (.*)\)', res.abstract) is None:
+                    resource_page = urlopen(res.url).read()
+                    if re.search(res.abstract, resource_page) is not None:
+                        source_title = resource_page.find('title', text=True)
+                        if source_title is not None:
+                            res.recommended_source = source_title
+                        else:
+                            res.recommended_source = 'Could not find good source. Check resource'
                     else:
-                        res.recommended_source = 'Could not find good source. Check resource'
-        else:
-            desc_prob = SuckyDesc(NO_ABS)
-            temp_issues.append(desc_prob)
-
-        if len(res.issue_space) > 0:
+                        res.recommended_source = 'Could not find abstract on webpage'
+            else:
+                desc_prob = SuckyDesc(NO_ABS)
+                temp_issues.append(desc_prob)
+            if len(temp_issues) > 0:
+                res.has_issues = True
             res.issue_space = temp_issues
-            res.has_issues = True
-        resources.append(res)
+            resources.append(res)
 
     next_page = current_page.find_next('li').find('a')
     full_url = urljoin(base_url, next_page['href'])
@@ -122,20 +130,22 @@ while current_page.find_next('li') is not None:
     current_page = soup.find('div', {'class': 'pagination'}).find('li', {'class': 'active'})
     page_num = current_page.find('a').text
 
-for r in resources:
-    if r.has_issues:
-        temp = resources.pop(resources.index(r))
-        resources.insert(0, temp)
+#for r in resources:
+#    if r.has_issues:
+#        temp = resources.pop(resources.index(r))
+#        resources.insert(0, temp)
 
 time_created = datetime.now().strftime('%b %d %Y_%I.%m %p')
 f = open('Output/Resources_Abstracts_noSource_{}.txt.'.format(time_created), 'w+')
-for res in resources:
-    f.write('{}\n pg. {}\n{}\n'.format(res.title, res.pg_num, res.url))
-    if res.has_issues:
-        for each in res.issue_space:
-            f.write("   * {}\n".format(each.issue))
-        f.write('\n')
-    else:
-        f.write(("   * {}\n".format(res.recommended_source)))
+for r in resources:
+    if r.recommended_source is not "":
+        f.write('{}\n pg. {}\n{}\n'.format(r.title, r.pg_num, r.url))
+        if r.has_issues:
+            for each in r.issue_space:
+                f.write("   * {}\n".format(each.issue))
+            f.write('\n')
+        else:
+            f.write(("   * {}\n".format(r.recommended_source)))
+    f.write('\n')
 
 f.close()

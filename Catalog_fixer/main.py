@@ -6,11 +6,14 @@ from urllib.parse import urljoin
 from datetime import datetime
 from time import clock
 import re
+
 from bs4 import BeautifulSoup
+
 from check_link import check_link
-from find_details import find_abstract, find_brief_desc, find_org, find_parent
+from Catalog_fixer.find_details import find_abstract, find_brief_desc, find_org, find_parent
 from field_checks import are_same, tag_in_title
 from issues import BadUrl, TitleProb, SuckyDesc
+
 
 # TODO: Check for duplicate links
 
