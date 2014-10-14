@@ -1,0 +1,16 @@
+The Catalog Fixer runs through the catalog located at http://hydro10.sdsc.edu/HLIResources/Resources
+and finds resources that have errors that need to be addressed. The Fixer outputs a text file listing
+the resources with issues, their issues, the page number they can be found on and the link provided
+for the resource.
+
+There are various classes of issues including being a duplicate of another resource (title or link fields
+are the same), having a bad url, having only an acronym in the title, having all lowercase letters in the
+title, missing an abstract, missing a source to the abstract, or missing a brief description.
+
+Each issue has an associated severity with url related issues being the highest severity, title and missing
+abstract issues being of moderate severity (including being a duplicate) and all other issues being of lowest
+severity. (Please not this paragraph is not exhaustive of all the issues a resource can have and what
+severities they have) Issues are output in order of severity.
+
+Because there is no direct access to the database, this fixer cannot update resources. It can only point out
+issues to a human curator who will then have to manually address these issues.
