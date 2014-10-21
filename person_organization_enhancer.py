@@ -17,20 +17,19 @@ org_URI = data['definitions']['jmd:RelatedAgentObject']['jmd:organizationURI']
 org_links = data['definitions']['jmd:RelatedAgentObject']['jmd:organizationLinks']
 """
 
-# Library of Congress Search page
-loc_url = 'http://authorities.loc.gov/cgi-bin/Pwebrecon.cgi?'
-loc_search_page = 'http://authorities.loc.gov/cgi-bin/Pwebrecon.cgi?DB=local&PAGE=First'
+# Present library of congress search page
+loc_url = 'http://id.loc.gov/search/'
 
-tree = ET.parse(urlopen('http://hydro10.sdsc.edu/metadata/National_Climatic_Data_Center/23759C9A-F801-495B-B140-9A41637E3D7C.xml'))
+tree = ET.parse(
+    urlopen('http://hydro10.sdsc.edu/metadata/National_Climatic_Data_Center/23759C9A-F801-495B-B140-9A41637E3D7C.xml'))
 root = tree.getroot()
 
 # find responsible party
 resp_party = root.find('{http://www.isotc211.org/2005/gmd}contact').find('{http://www.isotc211.org/2005/gmd}'
-                                                                        'CI_ResponsibleParty')
+                                                                         'CI_ResponsibleParty')
 # find organisationName field and the value in it
 org_field_val = resp_party.find('{http://www.isotc211.org/2005/gmd}'
                                 'organisationName').find('{http://www.isotc211.org/2005/gco}CharacterString').text
-print(org_field_val)
 orgs = re.split('[^a-zA-Z\s\d:.]', org_field_val)
 
 for org in orgs:
@@ -44,31 +43,20 @@ for org in orgs:
 # Now we have a list of orgs with no whitespaces
 # Remove duplicates
 orgs = list(set(orgs))
-print(orgs)
-
-# Grab the PID and SEQ from LOC search page because they don't want me to be successful
-search_page = BeautifulSoup(urlopen(loc_search_page).read())
-PID = search_page.find('input', {'name': 'PID'})['value']
-SEQ = search_page.find('input', {'name': 'SEQ'})['value']
-
-# Holds the response pages returned by our requests
-pages = []
 
 # Send each in a makeshift post request to Library of Congress db of authority names
+# Problem: Query uses the same name ('q') for the keyword as well as the options
+#          for what to search. This is solved by encoding and adding to the url twice
 for each in orgs:
-    values = {'Search_Arg': each,
-              'Search_Code': 'NHED_',
-              'PID': PID,
-              'SEQ': SEQ,
-              'CNT': 100,
-              'HIST': 1}
-    myData = urllib.parse.urlencode(values)
-    data = myData.encode('utf-8')
-    req = Request(loc_url, data)
-    response = urlopen(req)
-    the_page = BeautifulSoup(response.read()).prettify()
+    # First attach query to search org name
+    term_data = {'q': each}
+    term = urllib.parse.urlencode(term_data)
+    url_w_name = loc_url + '?' + term
+    # Next attach query to search name authority
+    options_data = {'q': 'cs:http://id.loc.gov/authorities/names'}
+    options = urllib.parse.urlencode(options_data)
+    full_url = url_w_name + '&' + options
+    the_page = BeautifulSoup(urlopen(full_url).read()).prettify()
     f = open('output_{}.txt'.format(each), 'w+')
     f.write(the_page)
     f.close()
-
-print(orgs)
