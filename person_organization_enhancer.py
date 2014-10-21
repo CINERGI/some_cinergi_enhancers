@@ -28,8 +28,9 @@ root = tree.getroot()
 resp_party = root.find('{http://www.isotc211.org/2005/gmd}contact').find('{http://www.isotc211.org/2005/gmd}'
                                                                         'CI_ResponsibleParty')
 # find organisationName field and the value in it
-org_field_val = resp_party.find('{http://www.isotc211.org/2005/gmd}organisationName').find('{http://www.isotc211.org/'
-                                                                                           '2005/gco}CharacterString').text
+org_field_val = resp_party.find('{http://www.isotc211.org/2005/gmd}'
+                                'organisationName').find('{http://www.isotc211.org/2005/gco}CharacterString').text
+print(org_field_val)
 orgs = re.split('[^a-zA-Z\s\d:.]', org_field_val)
 
 for org in orgs:
@@ -40,16 +41,20 @@ for org in orgs:
         new_org = org_with_spaces.rstrip().lstrip()
         orgs.insert(index, new_org)
 
+# Now we have a list of orgs with no whitespaces
+# Remove duplicates
+orgs = list(set(orgs))
+print(orgs)
+
 # Grab the PID and SEQ from LOC search page because they don't want me to be successful
 search_page = BeautifulSoup(urlopen(loc_search_page).read())
 PID = search_page.find('input', {'name': 'PID'})['value']
 SEQ = search_page.find('input', {'name': 'SEQ'})['value']
-print(PID)
-print(SEQ)
 
 # Holds the response pages returned by our requests
 pages = []
-# Now we have a list of orgs with no whitespaces
+
+# Send each in a makeshift post request to Library of Congress db of authority names
 for each in orgs:
     values = {'Search_Arg': each,
               'Search_Code': 'NHED_',
@@ -62,8 +67,8 @@ for each in orgs:
     req = Request(loc_url, data)
     response = urlopen(req)
     the_page = BeautifulSoup(response.read()).prettify()
-    pages.append(the_page)
+    f = open('output_{}.txt'.format(each), 'w+')
+    f.write(the_page)
+    f.close()
 
-f = open('output.txt', 'r+')
-f.write(pages[len(pages)-1])
-f.close()
+print(orgs)
