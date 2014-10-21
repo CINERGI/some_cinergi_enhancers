@@ -2,7 +2,7 @@ __author__ = 'Raquel'
 
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
-from urllib.request import urlopen, Request
+from urllib.request import urlopen
 import urllib.parse
 import re
 
