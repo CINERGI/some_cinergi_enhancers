@@ -20,18 +20,57 @@ org_links = data['definitions']['jmd:RelatedAgentObject']['jmd:organizationLinks
 # Present library of congress search page
 loc_url = 'http://id.loc.gov/search/'
 
-tree = ET.parse(
-    urlopen('http://hydro10.sdsc.edu/metadata/National_Climatic_Data_Center/23759C9A-F801-495B-B140-9A41637E3D7C.xml'))
+# NCDC resource
+# http://hydro10.sdsc.edu/metadata/National_Climatic_Data_Center/23759C9A-F801-495B-B140-9A41637E3D7C.xml
+# CZO resource
+# http://hydro10.sdsc.edu/metadata/Critical_Zone_Observatory_Catalog/159C0A40-C9AC-4161-914B-193FBAC9C1D1.xml
+
+tree = ET.parse(urlopen('http://hydro10.sdsc.edu/metadata/National_Climatic_Data_Center/'
+                        '23759C9A-F801-495B-B140-9A41637E3D7C.xml'))
 root = tree.getroot()
 
-# find responsible party
-resp_party = root.find('{http://www.isotc211.org/2005/gmd}contact').find('{http://www.isotc211.org/2005/gmd}'
-                                                                         'CI_ResponsibleParty')
-# find organisationName field and the value in it
-org_field_val = resp_party.find('{http://www.isotc211.org/2005/gmd}'
-                                'organisationName').find('{http://www.isotc211.org/2005/gco}CharacterString').text
-orgs = re.split('[^a-zA-Z\s\d:.]', org_field_val)
+# find two elements with Responsible Party: contact and identification info
+contact = root.find('{http://www.isotc211.org/2005/gmd}contact')
+idInfo = root.find('{http://www.isotc211.org/2005/gmd}identificationInfo').find('{http://www.isotc211.org/2005/gmd}'
+                                                                                'MD_DataIdentification')
 
+# Elements with organizations
+org_elements = []
+
+# in contact, CI_ResponsibleParty is direct child
+# Access this child then access the organisationName, characterString and text
+contact_orgs = contact.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty').find(
+    '{http://www.isotc211.org/2005/gmd}'
+    'organisationName').find('{http://www.isotc211.org/2005/gco}CharacterString')
+org_elements.append(contact_orgs)
+
+# in idInfo, CI_ResponsibleParty is part of citation and pointOfContact
+citation = idInfo.find('{http://www.isotc211.org/2005/gmd}citation').find('{http://www.isotc211.org/2005/gmd}'
+                                                                          'CI_Citation')
+
+citation_orgs = citation.find('{http://www.isotc211.org/2005/gmd}citedResponsibleParty').find(
+    '{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty').find('{http://www.isotc211.org/2005/gmd}'
+                                                                  'organisationName').find('{http://www.isotc211.org/'
+                                                                                           '2005/gco}CharacterString')
+
+org_elements.append(citation_orgs)
+
+pointOfContact_orgs = idInfo.find('{http://www.isotc211.org/2005/gmd}pointOfContact'). \
+    find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty').find('{http://www.isotc211.org/'
+                                                                       '2005/gmd}organisationName').find(
+    '{http://www.isotc211.org/2005/gco}CharacterString')
+org_elements.append(citation_orgs)
+
+# List to hold strings of organization names
+orgs = []
+
+for each in org_elements:
+    orgs.extend(re.split('[^a-zA-Z\s\d:.]', each.text))
+
+# Remove duplicates
+orgs = list(set(orgs))
+
+# Remove whitespaces
 for org in orgs:
     if re.match('(^\s|\s$)', org):
         index = orgs.index(org)
@@ -40,13 +79,10 @@ for org in orgs:
         new_org = org_with_spaces.rstrip().lstrip()
         orgs.insert(index, new_org)
 
-# Now we have a list of orgs with no whitespaces
-# Remove duplicates
-orgs = list(set(orgs))
-
+print(orgs)
 # Send each in a makeshift post request to Library of Congress db of authority names
 # Problem: Query uses the same name ('q') for the keyword as well as the options
-#          for what to search. This is solved by encoding and adding to the url twice
+# for what to search. This is solved by encoding and adding to the url twice
 for each in orgs:
     # First attach query to search org name
     term_data = {'q': each}
