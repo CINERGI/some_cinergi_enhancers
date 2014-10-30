@@ -1,6 +1,7 @@
 __author__ = 'Raquel'
 
 import xml.etree.ElementTree as ET
+from Organization import Organization, already_in
 from bs4 import BeautifulSoup
 from urllib.request import urlopen, Request
 import urllib.parse
@@ -17,8 +18,11 @@ org_URI = data['definitions']['jmd:RelatedAgentObject']['jmd:organizationURI']
 org_links = data['definitions']['jmd:RelatedAgentObject']['jmd:organizationLinks']
 """
 
+# Library of congress base url
+loc_base = 'http://id.loc.gov/'
+
 # Library of congress search page
-loc_url = 'http://id.loc.gov/search/'
+loc_search = 'http://id.loc.gov/search/'
 
 # Orcid search page
 orcid_url = 'https://orcid.org/orcid-search/quick-search'
@@ -28,8 +32,8 @@ orcid_url = 'https://orcid.org/orcid-search/quick-search'
 # CZO resource
 # http://hydro10.sdsc.edu/metadata/Critical_Zone_Observatory_Catalog/159C0A40-C9AC-4161-914B-193FBAC9C1D1.xml
 
-tree = ET.parse(urlopen('http://hydro10.sdsc.edu/metadata/Critical_Zone_Observatory_Catalog/'
-                        '159C0A40-C9AC-4161-914B-193FBAC9C1D1.xml'))
+tree = ET.parse(urlopen('http://hydro10.sdsc.edu/metadata/National_Climatic_Data_Center/23759C9A-F801'
+                        '-495B-B140-9A41637E3D7C.xml'))
 root = tree.getroot()
 
 # find two elements with Responsible Party: contact and identification info
@@ -73,22 +77,29 @@ for each in pointsOfContact:
 
 
 # List to hold strings of organization names
-orgs = []
+org_names = []
 
 for each in org_elements:
-    orgs.extend(re.split('[^a-zA-Z\s\d:.]', each.text))
+    org_names.extend(re.split('[^a-zA-Z\s\d:.]', each.text))
 
-# Remove duplicates
-orgs = list(set(orgs))
+print(org_names)
+orgs = []
 
 # Remove whitespaces
-for org in orgs:
-    if re.match('(^\s|\s$)', org):
-        index = orgs.index(org)
-        org_with_spaces = orgs.pop(index)
+for o in org_names:
+    if re.match('(^\s|\s$)', o):
         # remove spaces from org
-        new_org = org_with_spaces.rstrip().lstrip()
-        orgs.insert(index, new_org)
+        no_spaces = o.rstrip().lstrip()
+        if not already_in(no_spaces, orgs):
+            new_org = Organization(no_spaces)
+            orgs.append(new_org)
+    else:
+        if not already_in(o, orgs):
+            new_org = Organization(o)
+            orgs.append(new_org)
+
+for o in orgs:
+    print(o.string)
 
 names = []
 for p in pointsOfContact:
@@ -96,29 +107,51 @@ for p in pointsOfContact:
     indiv = ci_respParty.find('{http://www.isotc211.org/2005/gmd}individualName')
     if indiv:
         name = indiv.find('{http://www.isotc211.org/2005/gco}CharacterString').text
-    if name not in names:
-        names.append(name)
-
-print(names)
+        if name not in names:
+            names.append(name)
 
 # Send each in a makeshift post request to Library of Congress db of authority names
 # Problem: Query uses the same name ('q') for the keyword as well as the options
 # for what to search. This is solved by encoding and adding to the url twice
-for each in orgs:
+
+# TODO: Search results for correct result
+last = orgs[len(orgs)-1]
+term_data = {'q': last}
+term = urllib.parse.urlencode(term_data)
+url_w_name = loc_search + '?' + term
+# Next attach query to search name authority
+options_data = {'q': 'cs:http://id.loc.gov/authorities/names'}
+options = urllib.parse.urlencode(options_data)
+full_url = url_w_name + '&' + options
+the_page = BeautifulSoup(urlopen(full_url).read())
+table = the_page.find_all('table')[1]
+rows = table.find_all('tr')
+rows.pop(0)
+org_tags = []
+tds = []
+for r in rows:
+    tds.append(r.find_all('td')[1])
+for each in tds:
+    if each.find('a', href=True):
+        org_tags.append(each.find('a', href=True))
+for tag in org_tags:
+    print(tag)
+
+#for each in orgs:
     # First attach query to search org name
-    term_data = {'q': each}
-    term = urllib.parse.urlencode(term_data)
-    url_w_name = loc_url + '?' + term
-    # Next attach query to search name authority
-    options_data = {'q': 'cs:http://id.loc.gov/authorities/names'}
-    options = urllib.parse.urlencode(options_data)
-    full_url = url_w_name + '&' + options
-    the_page = BeautifulSoup(urlopen(full_url).read()).prettify()
-    f = open('output_{}.txt'.format(each), 'w+')
-    f.write(the_page)
-    f.close()
+#    term_data = {'q': each}
+#    term = urllib.parse.urlencode(term_data)
+#    url_w_name = loc_url + '?' + term
+#    # Next attach query to search name authority
+#    options_data = {'q': 'cs:http://id.loc.gov/authorities/names'}
+#    options = urllib.parse.urlencode(options_data)
+#    full_url = url_w_name + '&' + options
+#    the_page = BeautifulSoup(urlopen(full_url).read())  # .prettify()
 
 
+
+# TODO: get this damn post request to actually work
+# TODO: Find way to extract names
 for each in names:
     search_val = {'keys': each}
     data = urllib.parse.urlencode(search_val)
