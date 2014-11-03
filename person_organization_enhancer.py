@@ -98,8 +98,8 @@ for o in org_names:
             new_org = Organization(o)
             orgs.append(new_org)
 
-for o in orgs:
-    print(o.string)
+#for o in orgs:
+#    print(o.string)
 
 names = []
 for p in pointsOfContact:
@@ -116,7 +116,7 @@ for p in pointsOfContact:
 
 # TODO: Search results for correct result
 last = orgs[len(orgs)-1]
-term_data = {'q': last}
+term_data = {'q': last.string}
 term = urllib.parse.urlencode(term_data)
 url_w_name = loc_search + '?' + term
 # Next attach query to search name authority
@@ -130,8 +130,10 @@ rows.pop(0)
 org_tags = []
 tds = []
 for r in rows:
+    print(r.find_all('td')[1])
     tds.append(r.find_all('td')[1])
 for each in tds:
+    print(each)
     if each.find('a', href=True):
         org_tags.append(each.find('a', href=True))
 for tag in org_tags:
