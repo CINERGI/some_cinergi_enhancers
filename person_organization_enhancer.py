@@ -1,7 +1,8 @@
 __author__ = 'Raquel'
 
 import xml.etree.ElementTree as ET
-from Organization import Organization, already_in
+import xml.dom.minidom
+from Organization import Organization, already_in, pseudo_encode
 from bs4 import BeautifulSoup
 from urllib.request import urlopen, Request
 import urllib.parse
@@ -18,11 +19,14 @@ org_URI = data['definitions']['jmd:RelatedAgentObject']['jmd:organizationURI']
 org_links = data['definitions']['jmd:RelatedAgentObject']['jmd:organizationLinks']
 """
 
-# Library of congress base url
-loc_base = 'http://id.loc.gov/'
+# VIAF base url
+viaf_base = 'http://viaf.org/viaf/search'
 
-# Library of congress search page
-loc_search = 'http://id.loc.gov/search/'
+# string for searching corporate names
+corporate_names = 'local.corporateNames'
+
+# String for searching all of viaf
+all_viaf = 'all'
 
 # Orcid search page
 orcid_url = 'https://orcid.org/orcid-search/quick-search'
@@ -82,7 +86,6 @@ org_names = []
 for each in org_elements:
     org_names.extend(re.split('[^a-zA-Z\s\d:.]', each.text))
 
-print(org_names)
 orgs = []
 
 # Remove whitespaces
@@ -116,39 +119,37 @@ for p in pointsOfContact:
 
 # TODO: Search results for correct result
 last = orgs[len(orgs)-1]
-term_data = {'q': last.string}
-term = urllib.parse.urlencode(term_data)
-url_w_name = loc_search + '?' + term
-# Next attach query to search name authority
-options_data = {'q': 'cs:http://id.loc.gov/authorities/names'}
-options = urllib.parse.urlencode(options_data)
-full_url = url_w_name + '&' + options
-the_page = BeautifulSoup(urlopen(full_url).read())
-table = the_page.find_all('table')[1]
-rows = table.find_all('tr')
-rows.pop(0)
-org_tags = []
-tds = []
-for r in rows:
-    print(r.find_all('td')[1])
-    tds.append(r.find_all('td')[1])
-for each in tds:
-    print(each)
-    if each.find('a', href=True):
-        org_tags.append(each.find('a', href=True))
-for tag in org_tags:
-    print(tag)
-
-#for each in orgs:
-    # First attach query to search org name
-#    term_data = {'q': each}
-#    term = urllib.parse.urlencode(term_data)
-#    url_w_name = loc_url + '?' + term
-#    # Next attach query to search name authority
-#    options_data = {'q': 'cs:http://id.loc.gov/authorities/names'}
-#    options = urllib.parse.urlencode(options_data)
-#    full_url = url_w_name + '&' + options
-#    the_page = BeautifulSoup(urlopen(full_url).read())  # .prettify()
+string_to_encode = '"' + last.string + '"'
+encoded_search_terms = pseudo_encode(string_to_encode)
+terms = [corporate_names, all_viaf, encoded_search_terms]
+query_string = 'query='
+for each in terms:
+    query_string += each
+    if each is not terms[len(terms)-1]:
+        query_string += '+'
+data = {'recordSchema': 'BriefVIAF',
+        'sortKeys': 'holdingscount'}
+values = urllib.parse.urlencode(data, 'utf-8')
+full_url = viaf_base + '?' + query_string + '&' + values
+tree = ET.parse(urlopen(full_url))
+root = tree.getroot()
+records = root.find('{http://www.loc.gov/zing/srw/}records')
+for child in records:
+    recordData = child.find('{http://www.loc.gov/zing/srw/}recordData')
+    cluster = recordData.find('{http://viaf.org/viaf/terms#}VIAFCluster')
+    ctitle = cluster.find('{http://viaf.org/viaf/terms#}mainHeadings').find('{http://viaf.org/viaf/terms#}data').\
+        find('{http://viaf.org/viaf/terms#}text')
+    if re.match(last.string, str(ctitle.text)) is not None:
+        print(ctitle.text)
+#f = open('post_output.txt', 'wb+')
+#returned = urlopen(full_url).read()
+#f.write(returned)
+#f.close()
+#f = open('post_output.txt', 'r+')
+#xml = xml.dom.minidom.parse(f)
+#pretty_xml_as_string = xml.toprettyxml()
+#f.write(pretty_xml_as_string)
+#f.close()
 
 
 
