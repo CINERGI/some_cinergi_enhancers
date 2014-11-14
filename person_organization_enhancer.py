@@ -118,7 +118,7 @@ for p in pointsOfContact:
 # for what to search. This is solved by encoding and adding to the url twice
 
 # TODO: Search results for correct result
-last = orgs[len(orgs)-1]
+last = orgs[len(orgs)-2]
 string_to_encode = '"' + last.string + '"'
 encoded_search_terms = pseudo_encode(string_to_encode)
 terms = [corporate_names, all_viaf, encoded_search_terms]
@@ -139,17 +139,17 @@ for child in records:
     cluster = recordData.find('{http://viaf.org/viaf/terms#}VIAFCluster')
     ctitle = cluster.find('{http://viaf.org/viaf/terms#}mainHeadings').find('{http://viaf.org/viaf/terms#}data').\
         find('{http://viaf.org/viaf/terms#}text')
-    if re.match(last.string, str(ctitle.text)) is not None:
+    if re.search(last.string, str(ctitle.text)) is not None:
         print(ctitle.text)
-#f = open('post_output.txt', 'wb+')
-#returned = urlopen(full_url).read()
-#f.write(returned)
-#f.close()
-#f = open('post_output.txt', 'r+')
-#xml = xml.dom.minidom.parse(f)
-#pretty_xml_as_string = xml.toprettyxml()
-#f.write(pretty_xml_as_string)
-#f.close()
+f = open('post_output.txt', 'wb+')
+returned = urlopen(full_url).read()
+f.write(returned)
+f.close()
+f = open('post_output.txt', 'r+')
+xml = xml.dom.minidom.parse(f)
+pretty_xml_as_string = xml.toprettyxml()
+f.write(pretty_xml_as_string)
+f.close()
 
 
 
