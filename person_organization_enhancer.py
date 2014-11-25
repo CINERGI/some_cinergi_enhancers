@@ -31,6 +31,8 @@ all_viaf = 'all'
 # Orcid search page
 orcid_url = 'https://orcid.org/orcid-search/quick-search'
 
+#def generic_name(search_for, string_found):
+
 # NCDC resource
 # http://hydro10.sdsc.edu/metadata/National_Climatic_Data_Center/23759C9A-F801-495B-B140-9A41637E3D7C.xml
 # CZO resource
@@ -122,6 +124,7 @@ last = orgs[len(orgs)-2]
 string_to_encode = '"' + last.string + '"'
 encoded_search_terms = pseudo_encode(string_to_encode)
 terms = [corporate_names, all_viaf, encoded_search_terms]
+print("Searching for:" + last.string)
 query_string = 'query='
 for each in terms:
     query_string += each
@@ -139,7 +142,8 @@ for child in records:
     cluster = recordData.find('{http://viaf.org/viaf/terms#}VIAFCluster')
     ctitle = cluster.find('{http://viaf.org/viaf/terms#}mainHeadings').find('{http://viaf.org/viaf/terms#}data').\
         find('{http://viaf.org/viaf/terms#}text')
-    if re.search(last.string, str(ctitle.text)) is not None:
+    # Find a generic match
+    if re.search(u'{0:s} \(.*\)$'.format(last.string), str(ctitle.text)) is not None:
         print(ctitle.text)
 f = open('post_output.txt', 'wb+')
 returned = urlopen(full_url).read()
@@ -153,7 +157,6 @@ f.close()
 
 
 
-# TODO: get this damn post request to actually work
 # TODO: Find way to extract names
 for each in names:
     search_val = {'keys': each}
