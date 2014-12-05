@@ -119,12 +119,10 @@ for p in pointsOfContact:
 # Problem: Query uses the same name ('q') for the keyword as well as the options
 # for what to search. This is solved by encoding and adding to the url twice
 
-# TODO: Search results for correct result
 last = orgs[len(orgs)-2]
-string_to_encode = '"' + last.string + '"'
-encoded_search_terms = pseudo_encode(string_to_encode)
+to_encode = last.string
+encoded_search_terms = pseudo_encode(to_encode)
 terms = [corporate_names, all_viaf, encoded_search_terms]
-print("Searching for:" + last.string)
 query_string = 'query='
 for each in terms:
     query_string += each
@@ -145,6 +143,8 @@ for child in records:
     # Find a generic match
     if re.search(u'{0:s} \(.*\)$'.format(last.string), str(ctitle.text)) is not None:
         print(ctitle.text)
+        viafID = cluster.find('{http://viaf.org/viaf/terms#}viafID')
+        print(viafID.text)
 f = open('post_output.txt', 'wb+')
 returned = urlopen(full_url).read()
 f.write(returned)
