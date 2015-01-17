@@ -82,69 +82,35 @@ for each in pointsOfContact:
         org_elements.append(orgName.find('{http://www.isotc211.org/2005/gco}CharacterString'))
 
 
-# List to hold strings of organization names
+# List to hold strings of organization names with numbers and unnecessary characters removed
+# Stray spaces may still be in organization names
 org_names = []
 
 for each in org_elements:
     org_names.extend(re.split('[^a-zA-Z\s\d:.]', each.text))
 
+org_names = list(set(org_names))
+
+# List to hold Organization objects
 orgs = []
 
 # Remove whitespaces
-for o in org_names:
-    if re.match('(^\s|\s$)', o):
+for name in org_names:
+    if re.match('(^\s|\s$)', name):
         # remove spaces from org
-        no_spaces = o.rstrip().lstrip()
+        no_spaces = name.rstrip().lstrip()
         if not already_in(no_spaces, orgs):
             new_org = Organization(no_spaces)
             orgs.append(new_org)
     else:
-        if not already_in(o, orgs):
-            new_org = Organization(o)
+        if not already_in(name, orgs):
+            new_org = Organization(name)
             orgs.append(new_org)
-
-#for o in orgs:
-#    print(o.string)
-
-names = []
-for p in pointsOfContact:
-    ci_respParty = p.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty')
-    indiv = ci_respParty.find('{http://www.isotc211.org/2005/gmd}individualName')
-    if indiv:
-        name = indiv.find('{http://www.isotc211.org/2005/gco}CharacterString').text
-        if name not in names:
-            names.append(name)
 
 # Send each in a makeshift post request to Library of Congress db of authority names
 # Problem: Query uses the same name ('q') for the keyword as well as the options
 # for what to search. This is solved by encoding and adding to the url twice
-
-last = orgs[len(orgs)-2]
-to_encode = last.string
-encoded_search_terms = pseudo_encode(to_encode)
-terms = [corporate_names, all_viaf, encoded_search_terms]
-query_string = 'query='
-for each in terms:
-    query_string += each
-    if each is not terms[len(terms)-1]:
-        query_string += '+'
-data = {'recordSchema': 'BriefVIAF',
-        'sortKeys': 'holdingscount'}
-values = urllib.parse.urlencode(data, 'utf-8')
-full_url = viaf_base + '?' + query_string + '&' + values
-tree = ET.parse(urlopen(full_url))
-root = tree.getroot()
-records = root.find('{http://www.loc.gov/zing/srw/}records')
-for child in records:
-    recordData = child.find('{http://www.loc.gov/zing/srw/}recordData')
-    cluster = recordData.find('{http://viaf.org/viaf/terms#}VIAFCluster')
-    ctitle = cluster.find('{http://viaf.org/viaf/terms#}mainHeadings').find('{http://viaf.org/viaf/terms#}data').\
-        find('{http://viaf.org/viaf/terms#}text')
-    # Find a generic match
-    if re.search(u'{0:s} \(.*\)$'.format(last.string), str(ctitle.text)) is not None:
-        print(ctitle.text)
-        viafID = cluster.find('{http://viaf.org/viaf/terms#}viafID')
-        print(viafID.text)
+"""
 f = open('post_output.txt', 'wb+')
 returned = urlopen(full_url).read()
 f.write(returned)
@@ -154,10 +120,19 @@ xml = xml.dom.minidom.parse(f)
 pretty_xml_as_string = xml.toprettyxml()
 f.write(pretty_xml_as_string)
 f.close()
+"""
 
+"""
+# Code for people enhancer
+names = []
+for p in pointsOfContact:
+    ci_respParty = p.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty')
+    indiv = ci_respParty.find('{http://www.isotc211.org/2005/gmd}individualName')
+    if indiv:
+        name = indiv.find('{http://www.isotc211.org/2005/gco}CharacterString').text
+        if name not in names:
+            names.append(name)
 
-
-# TODO: Find way to extract names
 for each in names:
     search_val = {'keys': each}
     data = urllib.parse.urlencode(search_val)
@@ -167,3 +142,4 @@ for each in names:
     f = open('output_{}.text'.format(each), 'w+')
     f.write(the_page)
     f.close()
+"""
