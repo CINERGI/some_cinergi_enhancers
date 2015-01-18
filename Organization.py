@@ -46,7 +46,7 @@ class Organization:
         root = tree.getroot()
         records = root.find('{http://www.loc.gov/zing/srw/}records')
         if records is None:
-            return
+            return False
         for child in records:
             record_data = child.find('{http://www.loc.gov/zing/srw/}recordData')
             cluster = record_data.find('{http://viaf.org/viaf/terms#}VIAFCluster')
@@ -59,6 +59,7 @@ class Organization:
                 if viaf_id is not None:
                     self.uri = viaf_base + viaf_id.text + '/'
                     self.validated = True
+        return self.validated
 
 
 def already_in(string, orgs):

@@ -107,6 +107,12 @@ for name in org_names:
             new_org = Organization(name)
             orgs.append(new_org)
 
+for each in orgs:
+    print(each.validate_in_viaf())
+# TODO: call validate in VIAF for each organization
+# TODO: spit out enhanced XML doc
+# TODO: spit out just the enhancements
+
 # Send each in a makeshift post request to Library of Congress db of authority names
 # Problem: Query uses the same name ('q') for the keyword as well as the options
 # for what to search. This is solved by encoding and adding to the url twice
