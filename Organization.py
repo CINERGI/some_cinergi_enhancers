@@ -22,10 +22,11 @@ generic_terms = re.compile('-*(\s*(H|h)ome\s*|(W|w)elcome\s*|(T|t)he\s*|\s*(O|o)
 class Organization:
     def __init__(self, title):
         no_home_stuff = re.sub(generic_terms, '', title)
-        self.name = re.sub('[^a-zA-Z0-9 -]', '', no_home_stuff)
+        self.name = re.sub('[^a-zA-Z0-9 -.]', '', no_home_stuff)
         self.string = '{}'.format(self.name)
+    parentElem = None
     link = ''
-    uri = ''
+    uri = None
     validated = False
 
     def validate_in_viaf(self):
@@ -50,8 +51,8 @@ class Organization:
         for child in records:
             record_data = child.find('{http://www.loc.gov/zing/srw/}recordData')
             cluster = record_data.find('{http://viaf.org/viaf/terms#}VIAFCluster')
-            ctitle = cluster.find('{http://viaf.org/viaf/terms#}mainHeadings').find('{http://viaf.org/viaf/terms#}data').\
-                find('{http://viaf.org/viaf/terms#}text')
+            ctitle = cluster.find('{http://viaf.org/viaf/terms#}mainHeadings').\
+                find('{http://viaf.org/viaf/terms#}data').find('{http://viaf.org/viaf/terms#}text')
             # Find a generic match
             search_term = re.compile('{}( \(.*\)$)*'.format(self.string), re.IGNORECASE)
             if re.search(search_term, str(ctitle.text)) is not None:
