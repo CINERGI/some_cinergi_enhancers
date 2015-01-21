@@ -4,7 +4,7 @@ import xml.dom.minidom
 from parse_xml import parse_xml
 from enhance_xml import enhance_xml
 from urllib.request import urlopen
-import lxml
+
 
 def process_xml(filename):
     # List organization names found in document
@@ -29,18 +29,13 @@ def process_xml(filename):
 
 file = input('Enter the name of a file you wish to enhance: ')
 if file.endswith('.xml'):
+    namespaces = {'gmi': "http://www.isotc211.org/2005/gmi", 'gmd': "http://www.isotc211.org/2005/gmd", 'gco':
+                  "http://www.isotc211.org/2005/gco", 'gml': "http://www.opengis.net/gml/3.2", 'gmx':
+                  "http://www.isotc211.org/2005/gmx", 'gsr': "http://www.isotc211.org/2005/gsr",
+                  'gss': "http://www.isotc211.org/2005/gss", 'gts': "http://www.isotc211.org/2005/gts",
+                  'xlink': "http://www.w3.org/1999/xlink", 'xsi': "http://www.w3.org/2001/XMLSchema-instance",
+                  'saxon': "http://saxon.sf.net/", 'schemaLocation': "http://www.isotc211.org/2005/gmi http://www.ngdc."
+                                                                     "noaa.gov/metadata/published/xsd/schema.xsd"}
+    for prefix in namespaces:
+        ET.register_namespace(prefix, namespaces[prefix])
     process_xml(file)
-
-# TODO: spit out enhanced XML doc
-# TODO: spit out just the enhancements
-"""
-f = open('post_output.txt', 'wb+')
-returned = urlopen(full_url).read()
-f.write(returned)
-f.close()
-f = open('post_output.txt', 'r+')
-xml = xml.dom.minidom.parse(f)
-pretty_xml_as_string = xml.toprettyxml()
-f.write(pretty_xml_as_string)
-f.close()
-"""

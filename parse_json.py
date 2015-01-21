@@ -8,6 +8,3 @@ import json
 
 json_file = open('json_metadata/USGINMetadataJSONschemav2')
 data = json.load(json_file)
-
-for every in data:
-    
