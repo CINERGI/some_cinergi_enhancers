@@ -1,8 +1,10 @@
 __author__ = 'Raquel'
 import xml.etree.ElementTree as ET
+import xml.dom.minidom
 from parse_xml import parse_xml
 from enhance_xml import enhance_xml
 from urllib.request import urlopen
+import lxml
 
 def process_xml(filename):
     # List organization names found in document
@@ -15,7 +17,12 @@ def process_xml(filename):
         index = list(root).index(oldIDInfo)
         root.remove(oldIDInfo)
         root.insert(index, newIDInfo)
-        tree.write('enhanced_doc.xml')
+        rough_string = ET.tostring(root, 'utf-8')
+        parsed = xml.dom.minidom.parseString(rough_string)
+        print(parsed.toprettyxml('\t'))
+        f = open('enhanced.xml', 'wb+')
+        f.write(rough_string)
+        f.close()
     else:
         print('Problem reading file')
 

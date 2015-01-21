@@ -1,32 +1,30 @@
 __author__ = 'Raquel'
 
 import xml.etree.ElementTree as ET
-from urllib.request import urlopen
 
 # character string
 char_string = '{http://www.isotc211.org/2005/gco}CharacterString'
 
 
-def attach_keywords(id_info, new_keywords):
-    idInfo_children = list(id_info)
+def insert_at(id_element):
+    idInfo_children = list(id_element)
     idInfo_children.reverse()
-    reattach = []
     while idInfo_children:
         elem = idInfo_children.pop(0)
         if elem.tag == '{http://www.isotc211.org/2005/gmd}descriptiveKeywords':
-            break
-        id_info.remove(elem)
-        reattach.append(elem)
-    id_info.append(new_keywords)
-    for element in reattach:
-        id_info.append(element)
+            return (list(id_element).index(elem)) + 1
+
+
+def attach_keywords(root, new_keywords):
+    id_info = root.find('{http://www.isotc211.org/2005/gmd}identificationInfo').find('{http://www.isotc211.org/'
+                                                                                     '2005/gmd}MD_DataIdentification')
+    index = insert_at(id_info)
+    id_info.insert(index, new_keywords)
     return id_info
 
 
 def make_keywords(root, organizations):
-    idInfo = root.find('{http://www.isotc211.org/2005/gmd}identificationInfo').find('{http://www.isotc211.org/2005/gmd}'
-                                                                                    'MD_DataIdentification')
-    descriptiveKeywords = ET.SubElement(idInfo, '{http://www.isotc211.org/2005/gmd}descriptiveKeywords')
+    descriptiveKeywords = ET.Element('{http://www.isotc211.org/2005/gmd}descriptiveKeywords')
     md_keywords = ET.SubElement(descriptiveKeywords, '{http://www.isotc211.org/2005/gmd}MD_Keywords')
     for org in organizations:
         keyword = ET.SubElement(md_keywords, '{http://www.isotc211.org/2005/gmd}keyword')
@@ -44,17 +42,8 @@ def make_keywords(root, organizations):
     thesaurusTitle_cs.text = 'Virtual International Authority File (VIAF) Corporate Names'
     ET.SubElement(ci_citation, '{http://www.isotc211.org/2005/gmd}date',
                   {'{http://www.isotc211.org/2005/gco}nilReason': 'unknown'})
-    return attach_keywords(idInfo, descriptiveKeywords)
+    return attach_keywords(root, descriptiveKeywords)
 
 
 def enhance_xml(root, orgs):
     return make_keywords(root, orgs)
-"""
-def enhance_xml(root, orgs):
-    oldIDInfo = root.find('{http://www.isotc211.org/2005/gmd}identificationInfo')
-    newIDInfo = make_keywords(root, orgs)
-    index = list(root).index(oldIDInfo)
-    root.remove(oldIDInfo)
-    root.insert(index, newIDInfo)
-    return root
-"""
