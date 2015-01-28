@@ -7,7 +7,7 @@ import re
 
 # VIAF base urls
 viaf_base_search = 'http://viaf.org/viaf/search'
-viaf_base = 'http://viaf.org/viaf/search'
+viaf_base = 'http://viaf.org/viaf/'
 
 # string for searching corporate names
 corporate_names = 'local.corporateNames'
@@ -61,14 +61,6 @@ class Organization:
                     self.uri = viaf_base + viaf_id.text + '/'
                     self.validated = True
         return self.validated
-
-
-def already_in(string, orgs):
-    for o in orgs:
-        if o.name == string:
-            return True
-    return False
-
 
 def pseudo_encode(string):
     string_to_encode = '"' + string + '"'

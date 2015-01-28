@@ -1,6 +1,6 @@
 __author__ = 'Raquel'
 
-from Organization import Organization, already_in
+from Organization import Organization
 import re
 
 # VIAF base url
@@ -21,6 +21,13 @@ char_string = '{http://www.isotc211.org/2005/gco}CharacterString'
 # http://hydro10.sdsc.edu/metadata/Critical_Zone_Observatory_Catalog/159C0A40-C9AC-4161-914B-193FBAC9C1D1.xml
 
 
+def already_in(string, orgs):
+    for o in orgs:
+        if o.name == string:
+            return True
+    return False
+
+
 def parse_xml(root, orgs):
     # find two elements with Responsible Party: contact and identification info
     contact = root.find('{http://www.isotc211.org/2005/gmd}contact')
@@ -29,7 +36,7 @@ def parse_xml(root, orgs):
     if contact is None or idInfo is None:
         return False
 
-    # Dictionary with parent elements as keys
+    # Dictionary of organization names found. Keys are the parents of the elements where they are found
     orgs_found = {}
 
     # in contact, CI_ResponsibleParty is direct child
@@ -68,11 +75,9 @@ def parse_xml(root, orgs):
                 no_spaces = each.rstrip().lstrip()
                 if not already_in(no_spaces, orgs):
                     new_org = Organization(no_spaces)
-                    if new_org.validate_in_viaf():
-                        orgs.append(new_org)
+                    orgs.append(new_org)
             else:
                 if not already_in(each, orgs):
                     new_org = Organization(each)
-                    if new_org.validate_in_viaf():
-                        orgs.append(new_org)
+                    orgs.append(new_org)
     return True

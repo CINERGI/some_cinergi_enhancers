@@ -7,6 +7,7 @@ char_string = '{http://www.isotc211.org/2005/gco}CharacterString'
 
 
 def insert_at(id_element):
+    # Return the index of the last keywords in MD_DataIdentificationInfo
     idInfo_children = list(id_element)
     idInfo_children.reverse()
     while idInfo_children:
@@ -15,15 +16,16 @@ def insert_at(id_element):
             return (list(id_element).index(elem)) + 1
 
 
-def attach_keywords(root, new_keywords):
-    id_info = root.find('{http://www.isotc211.org/2005/gmd}identificationInfo').find('{http://www.isotc211.org/'
-                                                                                     '2005/gmd}MD_DataIdentification')
-    index = insert_at(id_info)
-    id_info.insert(index, new_keywords)
-    return id_info
+def insert_new_keywords(root, new_keywords):
+    MD_IDinfo = root.find('{http://www.isotc211.org/2005/gmd}identificationInfo').find('{http://www.isotc211.org/'
+                                                                                       '2005/gmd}MD_DataIdentification')
+    # Find the index of last keywords and insert new keywords after these
+    index = insert_at(MD_IDinfo)
+    MD_IDinfo.insert(index, new_keywords)
+    return MD_IDinfo
 
 
-def make_keywords(root, organizations):
+def make_keywords(organizations):
     descriptiveKeywords = ET.Element('{http://www.isotc211.org/2005/gmd}descriptiveKeywords')
     md_keywords = ET.SubElement(descriptiveKeywords, '{http://www.isotc211.org/2005/gmd}MD_Keywords')
     for org in organizations:
@@ -42,8 +44,9 @@ def make_keywords(root, organizations):
     thesaurusTitle_cs.text = 'Virtual International Authority File (VIAF) Corporate Names'
     ET.SubElement(ci_citation, '{http://www.isotc211.org/2005/gmd}date',
                   {'{http://www.isotc211.org/2005/gco}nilReason': 'unknown'})
-    return attach_keywords(root, descriptiveKeywords)
+    return descriptiveKeywords
 
 
 def enhance_xml(root, orgs):
-    return make_keywords(root, orgs)
+    new_keywords = make_keywords(orgs)
+    insert_new_keywords(root, new_keywords)
