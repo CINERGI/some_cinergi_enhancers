@@ -22,7 +22,6 @@ def insert_new_keywords(root, new_keywords):
     # Find the index of last keywords and insert new keywords after these
     index = insert_at(MD_IDinfo)
     MD_IDinfo.insert(index, new_keywords)
-    return MD_IDinfo
 
 
 def make_keywords(organizations):

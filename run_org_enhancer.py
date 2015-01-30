@@ -1,6 +1,6 @@
 __author__ = 'Raquel'
 import xml.etree.ElementTree as ET
-import xml.dom.minidom
+#import xml.dom.minidom
 from parse_xml import parse_xml
 from enhance_xml import enhance_xml
 from urllib.request import urlopen
