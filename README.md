@@ -5,6 +5,16 @@ Data comes in many forms. As such, the raw data that is input to an endpoint may
 
 This is a low level api of an enhancer meant to work on CINERGI metadata objects (ISO19139 XML). This enhancer validates organizations by searching the organization names in the Virtual International Authority (VIAF) database of corporate names (http://viaf.org/).
 
+Library dependencies are as follows:
+
+elementtree
+urllib.request
+urllib.parse
+
+Ensure that python version is python 3.
+
+The following is a sequence of steps performed in the enhancer.
+
 First the document is parsed for organization names which are extracted.
 
 A post request is made with each organization name. VIAF returns an XML response which is parsed to see if the organization was found in the database and if so what is the uri. (Example uri: http://viaf.org/viaf/137536736/)
