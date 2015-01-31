@@ -1,9 +1,12 @@
 __author__ = 'Raquel'
 import xml.etree.ElementTree as ET
-#import xml.dom.minidom
+import xml.dom.minidom
 from parse_xml import parse_xml
 from enhance_xml import enhance_xml
 from urllib.request import urlopen
+
+choice = 'Organization names found. Press (I) to iterate through each organization name found. Press (C) to continue ' \
+         'enhancing the document\n'
 
 
 def main():
@@ -25,23 +28,39 @@ def main():
     # Read document and populate orgs list with raw organization names found
     if parse_xml(root, orgs):
         if len(orgs) == 0:
-            print('No organization names could be found in the document')
+            print('No organization names could be found in the document. Exiting...')
             exit()
+        option = input(choice)
+        if option == 'I':
+            for each in orgs:
+                print(each.name)
+                next_thing = input('(E)nhance organization or press any other key to continue '
+                                   'iterating through organizations found.\n')
+                if next_thing == 'E':
+                    each.validate_in_viaf()
+                    print(each.enhancement_info())
+                if next_thing == 'C':
+                    continue
         enhanced_orgs = []
-        for each in orgs:
-            if each.validate_in_viaf():
-                enhanced_orgs.append(each)
-        if len(enhanced_orgs) == 0:
-            print('No enhancements were made')
+        enhance_doc = input('Enhance document? If no, program will exit [Y/N]: ')
+        if enhance_doc == 'N':
             exit()
-        # Enhance xml document
-        enhance_xml(root, enhanced_orgs)
-        rough_string = ET.tostring(root, 'utf-8')
-        #parsed = xml.dom.minidom.parseString(rough_string)
-        #print(parsed.toprettyxml('\t'))
-        f = open('enhanced.xml', 'wb+')
-        f.write(rough_string)
-        f.close()
+        if enhance_doc == 'Y':
+            for each in orgs:
+                if each.validated:
+                    enhanced_orgs.append(each)
+            if len(enhanced_orgs) == 0:
+                print('No enhancements could be made. Exiting.')
+                exit()
+            # Enhance xml document
+            enhance_xml(root, enhanced_orgs)
+            rough_string = ET.tostring(root, 'utf-8')
+            parsed = xml.dom.minidom.parseString(rough_string)
+            #print(parsed.toprettyxml('\t'))
+            f = open('enhanced.xml', 'wb+')
+            f.write(parsed.toxml('utf-8'))
+            f.close()
+            print('Enhanced document created. See enhanced.xml')
     else:
         print('Problem reading document')
 

@@ -62,6 +62,14 @@ class Organization:
                     self.validated = True
         return self.validated
 
+    def enhancement_info(self):
+        status = '{} was not found in VIAF and therefore will not be part of any enhancements made to the doc'\
+            .format(self.name)
+        if self.validated:
+            if self.uri:
+                status = '{} was found in VIAF.'.format(self.name)
+        return '{}\n {}\n {}\n {}\n'.format(self.name, self.validated, self.uri, status)
+
 def pseudo_encode(string):
     string_to_encode = '"' + string + '"'
     return re.sub('\s', '%2B', string_to_encode)
