@@ -21,6 +21,7 @@ def insert_new_keywords(root, new_keywords):
                                                                                        '2005/gmd}MD_DataIdentification')
     # Find the index of last keywords and insert new keywords after these
     index = insert_at(MD_IDinfo)
+    if index is None: index = 0  # IBO
     MD_IDinfo.insert(index, new_keywords)
 
 
