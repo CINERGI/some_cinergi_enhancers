@@ -44,7 +44,9 @@ def parse_xml(root, orgs):
     contact_rp = contact.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty')
     contact_orgs = contact_rp.find('{http://www.isotc211.org/2005/gmd}organisationName').\
         find('{http://www.isotc211.org/2005/gco}CharacterString').text
-    orgs_found[contact_rp] = contact_orgs
+    # IBO    
+    if contact_orgs is not None:    
+        orgs_found[contact_rp] = contact_orgs
 
     # in idInfo, CI_ResponsibleParty is part of citation and pointOfContact
     citation = idInfo.find('{http://www.isotc211.org/2005/gmd}citation').find('{http://www.isotc211.org/2005/gmd}'
@@ -65,7 +67,10 @@ def parse_xml(root, orgs):
         poc_rp = each.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty')
         orgName = poc_rp.find('{http://www.isotc211.org/2005/gmd}organisationName')
         if orgName is not None:
-            orgs_found[poc_rp] = orgName.find('{http://www.isotc211.org/2005/gco}CharacterString').text
+            # IBO
+            orgNameStr = orgName.find('{http://www.isotc211.org/2005/gco}CharacterString').text
+            if orgNameStr:
+                orgs_found[poc_rp] = orgNameStr
 
     for k in orgs_found:
         orgs_found[k] = re.split('[^a-zA-Z\s\d:.]', orgs_found[k])
