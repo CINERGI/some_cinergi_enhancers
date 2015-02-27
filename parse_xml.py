@@ -55,10 +55,12 @@ def parse_xml(root, orgs):
     citation_rp = citation.find('{http://www.isotc211.org/2005/gmd}citedResponsibleParty')
 
     if citation_rp is not None:
-        more_orgs = citation_rp.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty').\
-            find('{http://www.isotc211.org/2005/gmd}organisationName').\
-            find('{http://www.isotc211.org/2005/gco}CharacterString').text
-        orgs_found[citation_rp] = more_orgs
+        # IBO
+        orgNameEl = citation_rp.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty').\
+            find('{http://www.isotc211.org/2005/gmd}organisationName')
+        if (orgNameEl is not None) and (orgNameEl.find('{http://www.isotc211.org/2005/gco}CharacterString') is not None):
+            more_orgs = orgNameEl.find('{http://www.isotc211.org/2005/gco}CharacterString').text
+            orgs_found[citation_rp] = more_orgs
 
     # Find all points of contact
     pointsOfContact = idInfo.findall('{http://www.isotc211.org/2005/gmd}pointOfContact')
