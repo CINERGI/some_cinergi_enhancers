@@ -67,7 +67,10 @@ def parse_xml(root, orgs):
 
     for each in pointsOfContact:
         poc_rp = each.find('{http://www.isotc211.org/2005/gmd}CI_ResponsibleParty')
-        orgName = poc_rp.find('{http://www.isotc211.org/2005/gmd}organisationName')
+        #IBO
+        orgName = None
+        if poc_rp is not None:
+           orgName = poc_rp.find('{http://www.isotc211.org/2005/gmd}organisationName')
         if orgName is not None:
             # IBO
             orgNameStr = orgName.find('{http://www.isotc211.org/2005/gco}CharacterString').text
